@@ -5,7 +5,7 @@ local filePrefix = ""
 
 -- luacheck: globals io
 
--- find . -name "*.lua" | grep -v Localization-
+-- find . -name "*.lua" | grep -v Locales
 local fileList = {
     WeakAuras_Main = {
         "WeakAuras/RegionTypes/AuraBar.lua",
@@ -14,6 +14,7 @@ local fileList = {
         "WeakAuras/RegionTypes/Icon.lua",
         "WeakAuras/RegionTypes/Model.lua",
         "WeakAuras/RegionTypes/ProgressTexture.lua",
+        "WeakAuras/RegionTypes/RegionPrototype.lua",
         "WeakAuras/RegionTypes/Text.lua",
         "WeakAuras/RegionTypes/Texture.lua",
         "WeakAuras/BuffTrigger.lua",
@@ -29,6 +30,7 @@ local fileList = {
         "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasIconButton.lua",
         "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasImportButton.lua",
         "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasLoadedHeaderButton.lua",
+        "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasMultiLineEditBox.lua",
         "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasNewButton.lua",
         "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasNewHeaderButton.lua",
         "WeakAurasOptions/AceGUI-Widgets/AceGUIWidget-WeakAurasSortedDropDown.lua",
@@ -42,16 +44,21 @@ local fileList = {
         "WeakAurasOptions/OptionsFrames/OptionsFrame.lua",
         "WeakAurasOptions/OptionsFrames/TextEditor.lua",
         "WeakAurasOptions/OptionsFrames/TexturePicker.lua",
-        "WeakAurasOptions/RegionOptions/Aurabar.lua",
-        "WeakAurasOptions/RegionOptions/Dynamicgroup.lua",
+        "WeakAurasOptions/RegionOptions/AuraBar.lua",
+        "WeakAurasOptions/RegionOptions/DynamicGroup.lua",
         "WeakAurasOptions/RegionOptions/Group.lua",
         "WeakAurasOptions/RegionOptions/Icon.lua",
         "WeakAurasOptions/RegionOptions/Model.lua",
         "WeakAurasOptions/RegionOptions/ProgressTexture.lua",
         "WeakAurasOptions/RegionOptions/Text.lua",
         "WeakAurasOptions/RegionOptions/Texture.lua",
+        "WeakAurasOptions/ActionOptions.lua",
+        "WeakAurasOptions/AnimationOptions.lua",
+        "WeakAurasOptions/BuffTrigger.lua",
         "WeakAurasOptions/Cache.lua",
+        "WeakAurasOptions/ConditionOptions.lua",
         "WeakAurasOptions/ExternalAddons.lua",
+        "WeakAurasOptions/GenericTrigger.lua",
         "WeakAurasOptions/WeakAurasOptions.lua",
     },
     WeakAuras_Templates = {

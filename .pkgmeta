@@ -37,12 +37,21 @@ externals:
   url: https://repos.curseforge.com/wow/libspellrange-1-0/trunk
  WeakAuras/Libs/HereBeDragons-1.0:
   url: https://repos.wowace.com/wow/herebedragons
+ WeakAuras/Libs/LibRangeCheck-2.0:
+  url: https://repos.wowace.com/wow/librangecheck-2-0/trunk/LibRangeCheck-2.0
 
 enable-nolib-creation: no
 
+manual-changelog:
+ filename: CHANGELOG.md
+ markup-type: markdown
+
 ignore:
  - README.md
+ - CONTRIBUTING.md
  - babelfish.lua
+ - wowace_translations.sh
+ - generate_changelog.sh
 
 move-folders:
  WeakAuras/WeakAuras: WeakAuras

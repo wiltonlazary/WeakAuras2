@@ -13,23 +13,34 @@ local default = {
   width = 64,
   height = 64,
   color = {1, 1, 1, 1},
-  textColor = {1, 1, 1, 1},
-  displayStacks = "%s",
-  stacksPoint = "BOTTOMRIGHT",
-  stacksContainment = "INSIDE",
+  text1Enabled = true,
+  text1Color = {1, 1, 1, 1},
+  text1 = "%s",
+  text1Point = "BOTTOMRIGHT",
+  text1Containment = "INSIDE",
+  text2Enabled = false,
+  text2Color = {1, 1, 1, 1},
+  text2 = "%p",
+  text2Point = "CENTER",
+  text2Containment = "INSIDE",
   selfPoint = "CENTER",
   anchorPoint = "CENTER",
   anchorFrameType = "SCREEN",
   xOffset = 0,
   yOffset = 0,
-  font = "Friz Quadrata TT",
-  fontFlags = "OUTLINE",
-  fontSize = 12,
+  text1Font = "Friz Quadrata TT",
+  text1FontFlags = "OUTLINE",
+  text1FontSize = 12,
+  text2Font = "Friz Quadrata TT",
+  text2FontFlags = "OUTLINE",
+  text2FontSize = 24,
   stickyDuration = false,
   zoom = 0,
+  keepAspectRatio = false,
   frameStrata = 1,
   customTextUpdate = "update",
-  glow = false
+  glow = false,
+  cooldownTextEnabled = true
 };
 
 local screenWidth, screenHeight = math.ceil(GetScreenWidth() / 20) * 20, math.ceil(GetScreenHeight() / 20) * 20;
@@ -61,14 +72,27 @@ local properties = {
     setter = "SetGlow",
     type = "bool"
   },
-  textColor = {
-    display = L["Text Color"],
-    setter = "SetTextColor",
+  text1Color = {
+    display = L["1. Text Color"],
+    setter = "SetText1Color",
     type = "color"
   },
-  fontSize = {
-    display = L["Text Size"],
-    setter = "SetTextHeight",
+  text1FontSize = {
+    display = L["1. Text Size"],
+    setter = "SetText1Height",
+    type = "number",
+    min = 6,
+    softMax = 72,
+    step = 1
+  },
+  text2Color = {
+    display = L["2. Text Color"],
+    setter = "SetText2Color",
+    type = "color"
+  },
+  text2FontSize = {
+    display = L["2. Text Size"],
+    setter = "SetText2Height",
     type = "number",
     min = 6,
     softMax = 72,
@@ -78,32 +102,41 @@ local properties = {
     display = L["Color"],
     setter = "Color",
     type = "color"
+  },
+  inverse = {
+    display = L["Inverse"],
+    setter = "SetInverse",
+    type = "bool"
   }
 };
 
-local function GetTexCoord(region, texWidth)
-  local texCoord
+WeakAuras.regionPrototype.AddProperties(properties);
+
+local function GetProperties(data)
+  return properties;
+end
+
+local function GetTexCoord(region, texWidth, aspectRatio)
+  local currentCoord
 
   if region.MSQGroup then
     region.MSQGroup:ReSkin();
 
     local db = region.MSQGroup.db
     if db and not db.Disabled then
-      local currentCoord = {region.icon:GetTexCoord()}
-
-      texCoord = {}
-      for i, coord in pairs(currentCoord) do
-        if coord > 0.5 then
-          texCoord[i] = coord - coord * texWidth
-        else
-          texCoord[i] = coord + (1 - coord) * texWidth
-        end
-      end
+      currentCoord = {region.icon:GetTexCoord()}
     end
   end
+  if (not currentCoord) then
+    currentCoord = {0, 0, 0, 1, 1, 0, 1, 1};
+  end
 
-  if not texCoord then
-    texCoord = {texWidth, texWidth, texWidth, 1 - texWidth, 1 - texWidth, texWidth, 1 - texWidth, 1 - texWidth}
+  local xRatio = aspectRatio < 1 and aspectRatio or 1;
+  local yRatio = aspectRatio > 1 and 1 / aspectRatio or 1;
+  local texCoord = {}
+  for i, coord in pairs(currentCoord) do
+    local aspectRatio = (i % 2 == 1) and xRatio or yRatio;
+    texCoord[i] = (coord - 0.5) * texWidth * aspectRatio + 0.5;
   end
 
   return unpack(texCoord)
@@ -159,8 +192,13 @@ local function create(parent, data)
   local stacks = stacksFrame:CreateFontString(nil, "OVERLAY");
   local cooldownFrameLevel = cooldown:GetFrameLevel() + 1
   stacksFrame:SetFrameLevel(cooldownFrameLevel)
-  stacksFrame:SetFrameLevel(cooldownFrameLevel)
   region.stacks = stacks;
+
+  local text2Frame = CreateFrame("frame", nil, region);
+  local text2 = stacksFrame:CreateFontString(nil, "OVERLAY");
+  text2Frame:SetFrameLevel(cooldownFrameLevel)
+  region.text2 = text2;
+
   region.values = {};
   region.duration = 0;
   region.expirationTime = math.huge;
@@ -179,13 +217,52 @@ local function create(parent, data)
     end
   end
 
+  WeakAuras.regionPrototype.create(region);
+
   return region;
 end
 
+local function configureText(fontString, icon, enabled, point, width, height, containment, font, fontSize, fontFlags, textColor)
+  if (enabled) then
+    fontString:Show();
+  else
+    fontString:Hide();
+    return;
+  end
+
+  local sxo, syo = 0, 0;
+  if(point:find("LEFT")) then
+    sxo = width / 10;
+  elseif(point:find("RIGHT")) then
+    sxo = width / -10;
+  end
+  if(point:find("BOTTOM")) then
+    syo = height / 10;
+  elseif(point:find("TOP")) then
+    syo = height / -10;
+  end
+  fontString:ClearAllPoints();
+  if(containment == "INSIDE") then
+    fontString:SetPoint(point, icon, point, sxo, syo);
+  else
+    local selfPoint = WeakAuras.inverse_point_types[point];
+    fontString:SetPoint(selfPoint, icon, point, -0.5 * sxo, -0.5 * syo);
+  end
+  local fontPath = SharedMedia:Fetch("font", font);
+  fontString:SetFont(fontPath, fontSize, fontFlags == "MONOCHROME" and "OUTLINE, MONOCHROME" or fontFlags);
+  fontString:SetTextHeight(fontSize);
+  fontString:SetTextColor(textColor[1], textColor[2], textColor[3], textColor[4]);
+end
+
 local function modify(parent, region, data)
-  local button, icon, cooldown, stacks = region.button, region.icon, region.cooldown, region.stacks;
+  WeakAuras.regionPrototype.modify(parent, region, data);
+  local button, icon, cooldown, stacks, text2 = region.button, region.icon, region.cooldown, region.stacks, region.text2;
 
   region.useAuto = data.auto and WeakAuras.CanHaveAuto(data);
+
+  region.stickyDuration = data.stickyDuration;
+  region.progressPrecision = data.progressPrecision;
+  region.totalPrecision = data.totalPrecision;
 
   if MSQ and not region.MSQGroup then
     region.MSQGroup = MSQ:Group("WeakAuras", region.frameId);
@@ -205,38 +282,16 @@ local function modify(parent, region, data)
   region.height = data.height;
   region.scalex = 1;
   region.scaley = 1;
+  region.keepAspectRatio = data.keepAspectRatio;
   icon:SetAllPoints();
 
-  region:ClearAllPoints();
+  configureText(stacks, icon, data.text1Enabled, data.text1Point, data.width, data.height, data.text1Containment, data.text1Font, data.text1FontSize, data.text1FontFlags, data.text1Color);
+  configureText(text2, icon, data.text2Enabled, data.text2Point, data.width, data.height, data.text2Containment, data.text2Font, data.text2FontSize, data.text2FontFlags, data.text2Color);
 
-  WeakAuras.AnchorFrame(data, region, parent);
+  local texWidth = 1 - data.zoom * 0.5;
+  local aspectRatio = region.keepAspectRatio and region.width / region.height or 1;
 
-  local sxo, syo = 0, 0;
-  if(data.stacksPoint:find("LEFT")) then
-    sxo = data.width / 10;
-  elseif(data.stacksPoint:find("RIGHT")) then
-    sxo = data.width / -10;
-  end
-  if(data.stacksPoint:find("BOTTOM")) then
-    syo = data.height / 10;
-  elseif(data.stacksPoint:find("TOP")) then
-    syo = data.height / -10;
-  end
-  stacks:ClearAllPoints();
-  if(data.stacksContainment == "INSIDE") then
-    stacks:SetPoint(data.stacksPoint, icon, data.stacksPoint, sxo, syo);
-  else
-    local selfPoint = WeakAuras.inverse_point_types[data.stacksPoint];
-    stacks:SetPoint(selfPoint, icon, data.stacksPoint, -0.5 * sxo, -0.5 * syo);
-  end
-  local fontPath = SharedMedia:Fetch("font", data.font);
-  stacks:SetFont(fontPath, data.fontSize, data.fontFlags == "MONOCHROME" and "OUTLINE, MONOCHROME" or data.fontFlags);
-  stacks:SetTextHeight(data.fontSize);
-  stacks:SetTextColor(data.textColor[1], data.textColor[2], data.textColor[3], data.textColor[4]);
-
-  local texWidth = 0.25 * data.zoom;
-
-  icon:SetTexCoord(GetTexCoord(region, texWidth))
+  icon:SetTexCoord(GetTexCoord(region, texWidth, aspectRatio))
   icon:SetDesaturated(data.desaturate);
 
   local tooltipType = WeakAuras.CanHaveTooltip(data);
@@ -251,15 +306,33 @@ local function modify(parent, region, data)
   end
 
   cooldown:SetReverse(not data.inverse);
+  cooldown:SetHideCountdownNumbers(not data.cooldownTextEnabled or IsAddOnLoaded("OmniCC") or false);
 
   function region:Color(r, g, b, a)
     region.color_r = r;
     region.color_g = g;
     region.color_b = b;
     region.color_a = a;
-    icon:SetVertexColor(r, g, b, a);
+    if (r or g or b) then
+      a = a or 1;
+    end
+    icon:SetVertexColor(region.color_anim_r or r, region.color_anim_r or g, region.color_anim_r or b, region.color_anim_r or a);
+    if region.button then
+      region.button:SetAlpha(region.color_anim_r or a or 1);
+    end
+  end
+
+  function region:ColorAnim(r, g, b, a)
+    region.color_anim_r = r;
+    region.color_anim_g = g;
+    region.color_anim_b = b;
+    region.color_anim_a = a;
+    if (r or g or b) then
+      a = a or 1;
+    end
+    icon:SetVertexColor(r or region.color_r, g or region.color_g, b or region.color_b, a or region.color_a);
     if MSQ then
-      button:SetAlpha(a or 1);
+      region.button:SetAlpha(a or region.color_a or 1);
     end
   end
 
@@ -271,26 +344,50 @@ local function modify(parent, region, data)
   region:Color(data.color[1], data.color[2], data.color[3], data.color[4]);
 
   local UpdateText;
-  if (data.displayStacks:find('%%')) then
+  if (data.text1Enabled and data.text1:find('%%')) or (data.text2Enabled and data.text2:find('%%')) then
     UpdateText = function()
-      local textStr = data.displayStacks or "";
-      textStr = WeakAuras.ReplacePlaceHolders(textStr, region.values, region.state);
+      if (data.text1Enabled) then
+        local textStr = data.text1 or "";
+        textStr = WeakAuras.ReplacePlaceHolders(textStr, region);
 
-      if(stacks.displayStacks ~= textStr) then
-        if stacks:GetFont() then
-          stacks:SetText(textStr);
-          stacks.displayStacks = textStr;
+        if(stacks.text ~= textStr) then
+          if stacks:GetFont() then
+            WeakAuras.regionPrototype.SetTextOnText(stacks, textStr);
+            stacks.text = textStr;
+          end
+        end
+      end
+
+      if (data.text2Enabled) then
+        local textStr = data.text2 or "";
+        textStr = WeakAuras.ReplacePlaceHolders(textStr, region);
+
+        if(text2.text ~= textStr) then
+          if text2:GetFont() then
+            WeakAuras.regionPrototype.SetTextOnText(text2, textStr);
+            text2.text = textStr;
+          end
         end
       end
     end
   else
-    stacks:SetText(data.displayStacks);
-    stacks.displayStacks = data.displayStacks;
+    if (data.text1Enabled) then
+      WeakAuras.regionPrototype.SetTextOnText(stacks, data.text1);
+      stacks.text = data.text1;
+    end
+
+    if (data.text2Enabled) then
+      WeakAuras.regionPrototype.SetTextOnText(text2, data.text2);
+      text2.text = data.text2;
+    end
+
     UpdateText = function() end
   end
 
   local customTextFunc = nil
-  if(data.displayStacks:find("%%c") and data.customText) then
+  local data1Custom = data.text1Enabled and data.text1:find("%%c");
+  local data2Custom = data.text2Enabled and data.text2:find("%%c")
+  if (data.customText and (data1Custom or data2Custom)) then
     customTextFunc = WeakAuras.LoadFunction("return "..data.customText, region.id)
   end
   if (customTextFunc) then
@@ -343,105 +440,6 @@ local function modify(parent, region, data)
     UpdateText();
   end
 
-  local function UpdateTime()
-    local remaining = region.expirationTime - GetTime();
-    local progress
-    if region.duration > 0 then
-      progress = remaining / region.duration;
-      if(data.inverse) then
-        progress = 1 - progress;
-      end
-      progress = progress > 0.0001 and progress or 0.0001;
-    end
-
-    local remainingStr = "";
-    if(remaining == math.huge) then
-      remainingStr = " ";
-    elseif(remaining > 60) then
-      remainingStr = string.format("%i:", math.floor(remaining / 60));
-      remaining = remaining % 60;
-      remainingStr = remainingStr..string.format("%02i", remaining);
-    elseif(remaining > 0) then
-      -- remainingStr = remainingStr..string.format("%."..(data.progressPrecision or 1).."f", remaining);
-      if data.progressPrecision == 4 and remaining <= 3 then
-        remainingStr = remainingStr..string.format("%.1f", remaining);
-      elseif data.progressPrecision == 5 and remaining <= 3 then
-        remainingStr = remainingStr..string.format("%.2f", remaining);
-      elseif (data.progressPrecision == 4 or data.progressPrecision == 5) and remaining > 3 then
-        remainingStr = remainingStr..string.format("%d", remaining);
-      else
-        remainingStr = remainingStr..string.format("%."..(data.progressPrecision or 1).."f", remaining);
-      end
-    else
-      remainingStr = " ";
-    end
-    region.values.progress = remainingStr;
-
-    local duration = region.duration;
-    local durationStr = "";
-    if(duration > 60) then
-      durationStr = string.format("%i:", math.floor(duration / 60));
-      duration = duration % 60;
-      durationStr = durationStr..string.format("%02i", duration);
-    elseif(duration > 0) then
-      -- durationStr = durationStr..string.format("%."..(data.totalPrecision or 1).."f", duration);
-      if data.totalPrecision == 4 and duration <= 3 then
-        durationStr = durationStr..string.format("%.1f", duration);
-      elseif data.totalPrecision == 5 and duration <= 3 then
-        durationStr = durationStr..string.format("%.2f", duration);
-      elseif (data.totalPrecision == 4 or data.totalPrecision == 5) and duration > 3 then
-        durationStr = durationStr..string.format("%d", duration);
-      else
-        durationStr = durationStr..string.format("%."..(data.totalPrecision or 1).."f", duration);
-      end
-    else
-      durationStr = " ";
-    end
-    region.values.duration = durationStr;
-    UpdateText();
-  end
-
-  local function UpdateValue(value, total)
-    region.values.progress = value;
-    region.values.duration = total;
-    UpdateText();
-  end
-
-  local function UpdateCustom()
-    UpdateValue(region.customValueFunc(region.state.trigger));
-  end
-
-  local function UpdateDurationInfo(duration, expirationTime, customValue)
-    if(duration <= 0.01 or duration > region.duration or not data.stickyDuration) then
-      region.duration = duration;
-    end
-    region.expirationTime = expirationTime;
-
-    if(customValue) then
-      if(type(customValue) == "function") then
-        local value, total = customValue(region.state.trigger);
-        if(total > 0 and value < total) then
-          region.customValueFunc = customValue;
-          region:SetScript("OnUpdate", UpdateCustom);
-        else
-          UpdateValue(duration, expirationTime);
-          region:SetScript("OnUpdate", nil);
-          UpdateText();
-        end
-      else
-        UpdateValue(duration, expirationTime);
-        region:SetScript("OnUpdate", nil);
-      end
-    else
-      if(duration > 0.01) then
-        region:SetScript("OnUpdate", UpdateTime);
-      else
-        region:SetScript("OnUpdate", nil);
-        UpdateTime();
-      end
-    end
-  end
-
   function region:Scale(scalex, scaley)
     region.scalex = scalex;
     region.scaley = scaley;
@@ -465,9 +463,10 @@ local function modify(parent, region, data)
     end
     icon:SetAllPoints();
 
-    local texWidth = 0.25 * data.zoom;
+    local texWidth = 1 - 0.5 * data.zoom;
+    local aspectRatio = region.keepAspectRatio and width / height or 1;
 
-    local ulx, uly, llx, lly, urx, ury, lrx, lry = GetTexCoord(region, texWidth)
+    local ulx, uly, llx, lly, urx, ury, lrx, lry = GetTexCoord(region, texWidth, aspectRatio)
 
     if(mirror_h) then
       if(mirror_v) then
@@ -498,14 +497,28 @@ local function modify(parent, region, data)
     region:Scale(region.scalex, region.scaley);
   end
 
-  function region:SetTextColor(r, g, b, a)
+  function region:SetText1Color(r, g, b, a)
     region.stacks:SetTextColor(r, g, b, a);
   end
 
-  function region:SetTextHeight(height)
-    local fontPath = SharedMedia:Fetch("font", data.font);
-    region.stacks:SetFont(fontPath, height, data.fontFlags == "MONOCHROME" and "OUTLINE, MONOCHROME" or data.fontFlags);
+  function region:SetText2Color(r, g, b, a)
+    region.text2:SetTextColor(r, g, b, a);
+  end
+
+  function region:SetText1Height(height)
+    local fontPath = SharedMedia:Fetch("font", data.text1Font);
+    region.stacks:SetFont(fontPath, height, data.text1FontFlags == "MONOCHROME" and "OUTLINE, MONOCHROME" or data.text1FontFlags);
     region.stacks:SetTextHeight(height);
+  end
+
+  function region:SetText2Height(height)
+    local fontPath = SharedMedia:Fetch("font", data.text2Font);
+    region.text2:SetFont(fontPath, height, data.text2FontFlags == "MONOCHROME" and "OUTLINE, MONOCHROME" or data.text2FontFlags);
+    region.text2:SetTextHeight(height);
+  end
+
+  function region:SetInverse(inverse)
+    cooldown:SetReverse(not inverse);
   end
 
   function region:SetGlow(showGlow)
@@ -513,6 +526,7 @@ local function modify(parent, region, data)
       if (not region.__WAGlowFrame) then
         region.__WAGlowFrame = CreateFrame("Frame", nil, region);
         region.__WAGlowFrame:SetAllPoints();
+        region.__WAGlowFrame:SetSize(region.width, region.height);
       end
       WeakAuras.ShowOverlayGlow(region.__WAGlowFrame);
     else
@@ -524,19 +538,26 @@ local function modify(parent, region, data)
 
   region:SetGlow(data.glow);
 
-  if(data.cooldown and WeakAuras.CanHaveDuration(data) == "timed") then
-    function region:SetDurationInfo(duration, expirationTime, customValue)
-      if(duration <= 0.01 or duration > region.duration or not data.stickyDuration) then
-        region.duration = duration;
-      end
-      if(customValue or duration <= 0.01) then
-        cooldown:Hide();
-      else
-        cooldown:Show();
-        cooldown:SetCooldown(expirationTime - region.duration, region.duration);
-      end
-      UpdateDurationInfo(duration, expirationTime, customValue)
+  if(data.cooldown) then
+    function region:SetValue(value, total)
+      cooldown:Hide();
+      UpdateText();
     end
+
+    function region:SetTime(duration, expirationTime)
+      if (duration > 0) then
+        cooldown:Show();
+        cooldown:SetCooldown(expirationTime - duration, duration);
+      else
+        cooldown:Hide();
+      end
+      UpdateText();
+    end
+
+    function region:TimerTick()
+      UpdateText();
+    end
+
     function region:PreShow()
       if (region.duration > 0.01) then
         cooldown:Show();
@@ -545,12 +566,21 @@ local function modify(parent, region, data)
     end
   else
     cooldown:Hide();
-    function region:SetDurationInfo(duration, expirationTime, customValue)
-      UpdateDurationInfo(duration, expirationTime, customValue)
+    function region:SetValue(value, total)
+      UpdateText();
     end
+
+    function region:SetTime(duration, expirationTime)
+      UpdateText();
+    end
+
+    function region:TimerTick()
+      UpdateText();
+    end
+
     function region:PreShow()
     end
   end
 end
 
-WeakAuras.RegisterRegionType("icon", create, modify, default, properties);
+WeakAuras.RegisterRegionType("icon", create, modify, default, GetProperties);

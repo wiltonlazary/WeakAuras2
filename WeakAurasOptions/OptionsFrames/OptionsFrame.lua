@@ -66,15 +66,34 @@ local function CreateDecorationWide(frame)
   return deco1
 end
 
-local function CreateFrameSizer(frame, callback)
+local function CreateFrameSizer(frame, callback, position)
   callback = callback or (function() end)
 
+  local left, right, top, bottom, xOffset1, yOffset1, xOffset2, yOffset2;
+  if (position == "BOTTOMLEFT") then
+    left, right, top, bottom = 1, 0, 0, 1
+    xOffset1, yOffset1 = 6, 6
+    xOffset2, yOffset2 = 0, 0
+  elseif (position == "BOTTOMRIGHT") then
+    left, right, top, bottom = 0, 1, 0, 1
+    xOffset1, yOffset1 = 0, 6
+    xOffset2, yOffset2 = -6, 0
+  elseif (position == "TOPLEFT") then
+    left, right, top, bottom = 1, 0, 1, 0
+    xOffset1, yOffset1 = 6, 0
+    xOffset2, yOffset2 = 0, -6
+  elseif (position == "TOPRIGHT") then
+    left, right, top, bottom = 0, 1, 1, 0
+    xOffset1, yOffset1 = 0, 0
+    xOffset2, yOffset2 = -6, -6
+  end
+
   local handle = CreateFrame("BUTTON", nil, frame)
-  handle:SetPoint("BOTTOMLEFT", frame)
+  handle:SetPoint(position, frame)
   handle:SetSize(25, 25)
   handle:EnableMouse()
 
-  handle:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMLEFT") end)
+  handle:SetScript("OnMouseDown", function() frame:StartSizing(position) end)
   handle:SetScript("OnMouseUp", function()
     frame:StopMovingOrSizing()
     callback()
@@ -82,23 +101,23 @@ local function CreateFrameSizer(frame, callback)
 
   local normal = handle:CreateTexture(nil, "OVERLAY")
   normal:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
-  normal:SetTexCoord(1, 0, 0, 1)
-  normal:SetPoint("BOTTOMLEFT", handle, 6, 6)
-  normal:SetPoint("TOPRIGHT", handle)
+  normal:SetTexCoord(left, right, top, bottom)
+  normal:SetPoint("BOTTOMLEFT", handle, xOffset1, yOffset1)
+  normal:SetPoint("TOPRIGHT", handle, xOffset2, yOffset2)
   handle:SetNormalTexture(normal)
 
   local pushed = handle:CreateTexture(nil, "OVERLAY")
   pushed:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-  pushed:SetTexCoord(1, 0, 0, 1)
-  pushed:SetPoint("BOTTOMLEFT", handle, 6, 6)
-  pushed:SetPoint("TOPRIGHT", handle)
+  pushed:SetTexCoord(left, right, top, bottom)
+  pushed:SetPoint("BOTTOMLEFT", handle, xOffset1, yOffset1)
+  pushed:SetPoint("TOPRIGHT", handle, xOffset2, yOffset2)
   handle:SetPushedTexture(pushed)
 
   local highlight = handle:CreateTexture(nil, "OVERLAY")
   highlight:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
-  highlight:SetTexCoord(1, 0, 0, 1)
-  highlight:SetPoint("BOTTOMLEFT", handle, 6, 6)
-  highlight:SetPoint("TOPRIGHT", handle)
+  highlight:SetTexCoord(left, right, top, bottom)
+  highlight:SetPoint("BOTTOMLEFT", handle, xOffset1, yOffset1)
+  highlight:SetPoint("TOPRIGHT", handle, xOffset2, yOffset2)
   handle:SetHighlightTexture(highlight)
 
   return handle
@@ -173,17 +192,17 @@ function WeakAuras.CreateFrame()
 
   importbutton:SetScript("PostClick", function(self)
     if self:GetChecked() then
-      PlaySound("igMainMenuOptionCheckBoxOn")
+      PlaySound(856)
       db.import_disabled = true
     else
-      PlaySound("igMainMenuOptionCheckBoxOff")
+      PlaySound(857)
       db.import_disabled = nil
     end
   end)
   importbutton:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
-    GameTooltip:SetText("Disable Import")
-    GameTooltip:AddLine("If this option is enabled, you are no longer able to import auras.", 1, 1, 1)
+    GameTooltip:SetText(L["Disable Import"])
+    GameTooltip:AddLine(L["If this option is enabled, you are no longer able to import auras."], 1, 1, 1)
     GameTooltip:Show()
   end)
   importbutton:SetScript("OnLeave", GameTooltip_Hide)
@@ -228,9 +247,10 @@ function WeakAuras.CreateFrame()
 
   local titletext = title:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   titletext:SetPoint("TOP", titlebg, "TOP", 0, -14)
-  titletext:SetText(L["WeakAurasOptions"]);
+  titletext:SetText("WeakAuras " .. WeakAuras.versionString);
 
-  frame.sizer = CreateFrameSizer(frame, commitWindowChanges);
+  CreateFrameSizer(frame, commitWindowChanges, "BOTTOMLEFT");
+  CreateFrameSizer(frame, commitWindowChanges, "BOTTOMRIGHT");
 
   local minimize = CreateDecoration(frame)
   minimize:SetPoint("TOPRIGHT", -65, 12)
@@ -266,7 +286,7 @@ function WeakAuras.CreateFrame()
         frame.texteditor.frame:Show();
       elseif(frame.window == "codereview") then
         frame.codereview.frame:Show();
-      elseif(frame.window == "newview") then
+      elseif(frame.window == "newView") then
         frame.newView.frame:Show();
       end
       minimizebutton:SetNormalTexture("Interface\\BUTTONS\\UI-Panel-CollapseButton-Up.blp");
@@ -576,6 +596,22 @@ function WeakAuras.CreateFrame()
     AceConfig:RegisterOptionsTable("WeakAuras", optionTable);
     AceConfigDialog:Open("WeakAuras", container);
     container:SetTitle("");
+  end
+
+  frame.ClearPick = function(self, id)
+    local index = nil;
+    for i, childId in pairs(tempGroup.controlledChildren) do
+      if (childId == id) then
+        index = i;
+        break;
+      end
+    end
+
+    tremove(tempGroup.controlledChildren, index);
+    displayButtons[id]:ClearPick();
+
+    WeakAuras.ReloadTriggerOptions(tempGroup);
+    self:FillOptions(displayOptions[tempGroup.id]);
   end
 
   frame.ClearPicks = function(self, except)

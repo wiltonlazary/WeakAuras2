@@ -44,7 +44,7 @@ globals = {
 	"WeakAuras_DropIndicator",
 	"IndentationLib",
 
-	-- framexml misc
+	-- FrameXML misc
 	"C_Timer",
 	"CooldownFrame_Set",
 	"DEFAULT_CHAT_FRAME",
@@ -57,8 +57,12 @@ globals = {
 	"STATICPOPUP_NUMDIALOGS",
 	"SlashCmdList",
 	"ChatFrame_AddMessageEventFilter",
+	"UIDropDownMenu_AddButton",
+	"UIDropDownMenu_Initialize",
+	"Mixin",
+	"SmoothStatusBarMixin",
 
-	-- framexml frames
+	-- FrameXML frames
 	"GameTooltip",
 	"ItemRefTooltip",
 	"UIErrorsFrame",
@@ -67,7 +71,7 @@ globals = {
 	"WorldFrame",
 	"WorldMapFrame",
 
-	-- framexml globals
+	-- FrameXML globals
 	"MAX_TALENT_TIERS",
 	"NUM_TALENT_COLUMNS",
 	"MAX_PVP_TALENT_TIERS",
@@ -75,7 +79,13 @@ globals = {
 	"FONT_COLOR_CODE_CLOSE",
 	"RED_FONT_COLOR_CODE",
 
-	-- api functions
+	-- ENUMS
+	"UPPER_RIGHT_VERTEX",
+	"UPPER_LEFT_VERTEX",
+	"LOWER_RIGHT_VERTEX",
+	"LOWER_LEFT_VERTEX",
+
+	-- API functions
 	"AbandonQuest",
 	"AbandonSkill",
 	"AcceptAreaSpiritHeal",
@@ -1967,6 +1977,7 @@ globals = {
 	"GetItemLevelColor",
 	"GetItemLevelIncrement",
 	"GetItemQualityColor",
+	"GetItemSetInfo",
 	"GetItemSpecInfo",
 	"GetItemSpell",
 	"GetItemStatDelta",
@@ -3582,6 +3593,7 @@ globals = {
 	"UnitPosition",
 	"UnitPower",
 	"UnitPowerBarTimerInfo",
+	"UnitPowerDisplayMod",
 	"UnitPowerMax",
 	"UnitPowerType",
 	"UnitPrestige",

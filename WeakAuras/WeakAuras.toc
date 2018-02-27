@@ -1,4 +1,4 @@
-## Interface: 70200
+## Interface: 70300
 ## Title: WeakAuras 2
 ## Author: Mirrored and the WeakAuras Team
 ## Version: @project-version@
@@ -9,11 +9,11 @@
 ## Notes-zhTW: 一個強大且全面實用的顯示圖形和訊息基於增益，減益和其它觸發。
 ## X-Category: Interface Enhancements
 ## Globe-Post: WeakAurasOptions, WeakAurasModelPaths, WeakAurasTemplates
-## X-Website: http://www.curse.com/addons/wow/weakauras-2
+## X-Website: https://www.curseforge.com/wow/addons/weakauras-2
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
 ## SavedVariables: WeakAurasSaved
-## OptionalDeps: Ace3, LibCompress, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, Masque, GTFO, LibChatAnims, LibBabble-Race-3.0, LibButtonGlow-1.0, LibSpellRange-1.0, HereBeDragons-1.0
+## OptionalDeps: Ace3, LibCompress, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, Masque, GTFO, LibChatAnims, LibBabble-Race-3.0, LibButtonGlow-1.0, LibSpellRange-1.0, HereBeDragons-1.0, LibRangeCheck-2.0
 
 embeds.xml
 Init.lua
@@ -27,6 +27,7 @@ Transmission.lua
 BuffTrigger.lua
 GenericTrigger.lua
 
+RegionTypes\RegionPrototype.lua
 RegionTypes\ProgressTexture.lua
 RegionTypes\Texture.lua
 RegionTypes\AuraBar.lua

@@ -122,16 +122,16 @@ local function createOptions(id, data)
     startAngle = {
       type = "range",
       order = 42,
-      name = function() if (data.inverse) then return L["End Angle"] else return L["Start Angle"] end end,
+      name = L["Start Angle"],
       min = 0,
       max = 360,
-      step = 90,
+      bigStep = 1,
       hidden = function() return data.orientation ~= "CLOCKWISE" and data.orientation ~= "ANTICLOCKWISE"; end
     },
     endAngle = {
       type = "range",
       order = 44,
-      name = function() if (data.inverse) then return L["Start Angle"] else return L["End Angle"] end end,
+      name = L["End Angle"],
       min = 0,
       max = 360,
       bigStep = 1,
@@ -236,12 +236,63 @@ local function createOptions(id, data)
       desc = L["Prevents duration information from decreasing when an aura refreshes. May cause problems if used with multiple auras with different durations."],
       order = 55
     },
+    smoothProgress = {
+      type = "toggle",
+      name = L["Smooth Progress"],
+      desc = L["Animates progress changes"],
+      order = 55.1
+    },
+    textureWrapMode = {
+      type = "select",
+      name = L["Texture Wrap"],
+      order = 55.2,
+      values = WeakAuras.texture_wrap_types
+    },
     spacer = {
       type = "header",
       name = "",
-      order = 60
+      order = 56
+    },
+    spacer2 = {
+      type = "header",
+      name = "",
+      order = 59
     }
   };
+  options = WeakAuras.regionPrototype.AddAdjustedDurationOptions(options, data, 57);
+
+  local overlayInfo = WeakAuras.GetOverlayInfo(data);
+  if (overlayInfo and next(overlayInfo)) then
+    options["overlayheader"] = {
+      type = "header",
+      name = L["Overlays"],
+      order = 58
+    }
+    local index = 58.01
+    for id, display in ipairs(overlayInfo) do
+      options["overlaycolor" .. id] = {
+        type = "color",
+        name = string.format(L["%s Color"], display),
+        hasAlpha = true,
+        order = index,
+        get = function()
+          if (data.overlays and data.overlays[id]) then
+            return unpack(data.overlays[id]);
+          end
+          return 1, 1, 1, 1;
+        end,
+        set = function(info, r, g, b, a)
+          if (not data.overlays) then
+            data.overlays = {};
+          end
+          data.overlays[id] = { r, g, b, a};
+          WeakAuras.Add(data);
+        end
+      }
+      index = index + 0.01
+    end
+  end
+
   options = WeakAuras.AddPositionOptions(options, id, data);
 
   return options;
@@ -332,8 +383,8 @@ local function createThumbnail(parent)
   local foreground = region:CreateTexture(nil, "ART");
   borderframe.foreground = foreground;
 
-  borderframe.foregroundSpinner = WeakAuras.createSpinner(borderframe, "ARTWORK", parent:GetFrameLevel() + 2);
-  borderframe.backgroundSpinner = WeakAuras.createSpinner(borderframe, "BACKGROUND", parent:GetFrameLevel() + 1);
+  borderframe.backgroundSpinner = WeakAuras.createSpinner(region, "BACKGROUND", 1);
+  borderframe.foregroundSpinner = WeakAuras.createSpinner(region, "ARTWORK", 1);
 
   return borderframe;
 end
@@ -354,6 +405,8 @@ local function modifyThumbnail(parent, borderframe, data, fullModify, size)
     foregroundSpinner:SetHeight(size);
     backgroundSpinner:SetWidth(scale * data.width)
     backgroundSpinner:SetHeight(size);
+    region.width = scale * data.width;
+    region.height = size;
   else
     scale = size/data.width;
     region:SetWidth(size);
@@ -364,6 +417,8 @@ local function modifyThumbnail(parent, borderframe, data, fullModify, size)
     foregroundSpinner:SetHeight(scale * data.height);
     backgroundSpinner:SetWidth(size)
     backgroundSpinner:SetHeight(scale * data.height);
+    region.width = size;
+    region.height = scale * data.height;
   end
 
   region:ClearAllPoints();
@@ -386,14 +441,13 @@ local function modifyThumbnail(parent, borderframe, data, fullModify, size)
 
   foregroundSpinner:SetTexture(data.foregroundTexture);
   foregroundSpinner:SetDesaturated(data.desaturateForeground);
-  foregroundSpinner:SetBlendMode(data.blendMode);
   foregroundSpinner:Color(data.foregroundColor[1], data.foregroundColor[2], data.foregroundColor[3], data.foregroundColor[4])
+  foregroundSpinner:SetBlendMode(data.blendMode);
 
   background:ClearAllPoints();
   foreground:ClearAllPoints();
   background:SetPoint("BOTTOMLEFT", region, "BOTTOMLEFT");
   background:SetPoint("TOPRIGHT", region, "TOPRIGHT");
-  backgroundSpinner:SetBackgroundOffset(region, 0);
 
   region.mirror_h = data.mirror;
   region.scale_x = 1 + (data.crop_x or 0.41);
@@ -548,23 +602,35 @@ local function modifyThumbnail(parent, borderframe, data, fullModify, size)
     local startAngle = data.startAngle % 360;
     local endAngle = data.endAngle % 360;
 
-    if (data.inverse) then
-      startAngle, endAngle = endAngle, startAngle
-      startAngle = 360 - startAngle;
-      endAngle = 360 - endAngle;
-      clockwise = not clockwise;
-    end
     if (endAngle <= startAngle) then
       endAngle = endAngle + 360;
     end
 
-    backgroundSpinner:SetProgress(region, startAngle, endAngle, 0, clockwise);
+    backgroundSpinner:SetProgress(region, startAngle, endAngle);
+    foregroundSpinner:SetProgress(region, startAngle, endAngle);
 
     function region:SetValue(progress)
-      progress = progress or 0;
       region.progress = progress;
 
-      foregroundSpinner:SetProgress(region, startAngle, endAngle, progress, clockwise);
+      if (progress < 0) then
+        progress = 0;
+      end
+
+      if (progress > 1) then
+        progress = 1;
+      end
+
+      if (not clockwise) then
+        progress = 1 - progress;
+      end
+
+      local pAngle = (endAngle - startAngle) * progress + startAngle;
+
+      if (clockwise) then
+        foregroundSpinner:SetProgress(region, startAngle, pAngle);
+      else
+        foregroundSpinner:SetProgress(region, pAngle, endAngle);
+      end
     end
   end
 
